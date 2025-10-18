@@ -124,7 +124,7 @@ def get_contact_map(structure, chain_id: Optional[str] = None,
 def get_attn_data(sequence: str,
                   layer_indices: Optional[List[int]] = None,
                   drop_special_tokens: bool = True,
-                  renormalize_rows: bool = False) -> Tuple[torch.Tensor, List[int]]:
+                  renormalize_rows: bool = True) -> Tuple[torch.Tensor, List[int]]:
     """
     Extract attention tensors for a protein sequence.
     
@@ -165,14 +165,14 @@ def get_attn_data(sequence: str,
         if renormalize_rows:
             A = A / A.sum(dim=-1, keepdim=True).clamp_min(1e-12)
         processed.append(A.float().cpu())
-    
+
     return torch.stack(processed, dim=0), keep_idx
 
 
 # ===================== ANALYSIS =====================
 @torch.no_grad()
 def attn_corr(pdb_items: List[str],
-              theta: float = 0.10,
+              threshold: float = 0.01,
               layer_indices: Optional[List[int]] = None,
               chain_id: Optional[str] = None,
               contact_thresh: float = 8.0,
@@ -182,7 +182,7 @@ def attn_corr(pdb_items: List[str],
     
     Args:
         pdb_items: List of PDB IDs to analyze
-        theta: Attention threshold for "high attention"
+        threshold: Top-k percent threshold for high-attention pairs
         layer_indices: Layers to analyze (None = all)
         chain_id: Specific chain ID (None = first valid)
         contact_thresh: Distance threshold (Å) for contacts
@@ -191,6 +191,7 @@ def attn_corr(pdb_items: List[str],
     Returns:
         prop_matrix: (num_heads, num_layers) tensor of proportions
     """
+
     if layer_indices is None:
         layer_indices = list(range(model.config.num_hidden_layers))
     
@@ -219,33 +220,50 @@ def attn_corr(pdb_items: List[str],
             # Get attention
             A, keep_idx = get_attn_data(seq, layer_indices=layer_indices,
                                        drop_special_tokens=True, renormalize_rows=False)
+
             
+
             # Validate shapes
             if len(keep_idx) != len(seq):
                 failed_count += 1
                 with open(log_file, "a") as f:
                     f.write(f"{pdb_id}\tToken mismatch: {len(keep_idx)} tokens vs {len(seq)} residues\n")
                 continue
-            
+
             # Analyze each layer and head
             for layer_i, layer in enumerate(layer_indices):
                 for head in range(num_heads):
-                    # Extract attention submatrix
-                    attn_matrix = A[layer_i, head][keep_idx][:, keep_idx]
-                    high_attn = attn_matrix >= theta
-                    
-                    if high_attn.shape != C.shape:
-                        failed_count += 1
-                        with open(log_file, "a") as f:
-                            f.write(f"{pdb_id}\tShape mismatch: {high_attn.shape} vs {C.shape}\n")
-                        break  # Skip to next PDB
-                    
-                    # Compute proportion
-                    num_high = high_attn.sum().item()
+
+
+                    # attn submatrix (T,T) as float tensor on device
+                    attention_mat = A[layer_i, head][keep_idx][:, keep_idx]  # float32 on device (no grads)
+
+                    # build a mask for the lower triangle, no diag
+                    T = attention_mat.shape[0]
+                    tri_mask = torch.tril(torch.ones(T, T, dtype=torch.bool, device=attention_mat.device), diagonal=-1)
+
+                    # (optional) restrict contacts to the same region and convert to torch.bool on same device
+                    C_t = torch.as_tensor(C, dtype=torch.bool, device=attention_mat.device)
+                    C_tri = C_t & tri_mask
+
+                    # consider only those attn values when computing the threshold
+                    vals = attention_mat[tri_mask]  # 1D
+                    if vals.numel() == 0:
+                        continue  # nothing to compute for this PDB/head/layer
+
+                    # pick top fraction
+                    top_frac = threshold  # e.g., 0.01 for top 1%
+                    # quantile route:
+                    theta = torch.quantile(vals, 1 - top_frac)
+                    high_tri = (attention_mat > theta) & tri_mask
+
+                    # (micro) numerator/denominator
+                    num_high = high_tri.sum().item()
                     if num_high > 0:
-                        num_contact_and_high = (C & high_attn).sum().item()
-                        prop_sum[head, layer_i] += num_contact_and_high / num_high
-                        counts[head, layer_i] += 1
+                        num_contact_and_high = (C_tri & high_tri).sum().item()
+                        prop_sum[head, layer_i] += num_contact_and_high  # accumulate numerator
+                        counts[head, layer_i] += num_high               # accumulate denominator
+
         
         except Exception as e:
             failed_count += 1
@@ -259,7 +277,8 @@ def attn_corr(pdb_items: List[str],
     
     # Average across structures
     prop_matrix = np.divide(prop_sum, counts, out=np.zeros_like(prop_sum), where=counts > 0)
-    
+
+
     return torch.from_numpy(prop_matrix)
 
 
@@ -272,7 +291,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--precision", type=str, default="bf16",
                         help="Computation precision (fp32, bf16, etc.)")
-    parser.add_argument("--theta", type=float, default=0.1,
+    parser.add_argument("--top_k_percent", type=float, default=1,
                         help="Threshold for high-attention pairs")
     parser.add_argument("--data_sample", type=int, default=None,
                         help="Limit number of proteins to process (None = all)")
@@ -291,10 +310,11 @@ if __name__ == "__main__":
     sample_list = pdb_list[:args.data_sample] if args.data_sample else pdb_list
     print(f"Analyzing {len(sample_list)} PDB structures\n")
     
+
     # Run analysis
     prop_matrix = attn_corr(
         sample_list,
-        theta=args.theta,
+        threshold=args.top_k_percent,
         layer_indices=args.layer_indices,
         chain_id=args.chain_id,
         contact_thresh=args.contact_thresh
