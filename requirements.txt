@@ -1,0 +1,12 @@
+# Install torch with the CUDA 12.1 wheels index, e.g.
+#   pip install --index-url https://download.pytorch.org/whl/cu121 torch==2.5.1+cu121
+torch==2.5.1+cu121
+causal-conv1d==1.4.0
+mamba-ssm==2.2.4
+transformers==4.57.1
+numpy==2.2.6
+pandas>=2.2
+biopython>=1.84
+accelerate >=0.30.3
+tqdm>=4.65.0
+accelerate>=0.20.0
