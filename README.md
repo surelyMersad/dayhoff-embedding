@@ -69,7 +69,7 @@ To caclulate the proportion of high attention token pairs that correspond to con
 ### Basic Usage
 
 ```bash
-python gp.py \
+python attn.py \
     --top_k_percent 0.01 \
     --data_sample 100 \
     --save_dir results \
@@ -79,7 +79,7 @@ python gp.py \
 ### Using Accelerate (Recommended for Multi-GPU)
 
 ```bash
-accelerate launch gp.py \
+accelerate launch attn.py \
     --top_k_percent 0.01 \
     --data_sample 100 \
     --save_dir results \
