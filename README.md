@@ -50,14 +50,9 @@ pip install -r requirements.txt
 
 5. **Create PDB list file**
 
-Create a file `pdb_ids.py` with your PDB IDs:
+Create a file `pdb_ids.py` with your PDB IDs by running parse_data.py script (you can change the number of parsed sequences in parse_data.py directly:
 ```python
-pdb_list = [
-    "1A2P",
-    "1BTA",
-    "1C3D",
-    # Add your PDB IDs here
-]
+python parse_data.py
 ```
 
 ## 💻 Usage
