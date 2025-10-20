@@ -55,6 +55,15 @@ Create a file `pdb_ids.py` with your PDB IDs by running parse_data.py script (yo
 python parse_data.py
 ```
 
+## Analysis 
+
+To caclulate the proportion of high attention token pairs that correspond to contact, the following steps were taken : 
+
+1) Extract the high attention pairs (can specify with --top_k_percent arg)
+2) Calulate the contact maps (residues that are closer than 8.0 A)
+3) Report the proportion of high attention pairs that are also in contact
+
+
 ## 💻 Usage
 
 ### Basic Usage
