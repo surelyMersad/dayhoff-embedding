@@ -10,7 +10,7 @@ analyzing how attention patterns in dayhoffs protein language models align with 
 3. **Attention Extraction**: Extracts attention patterns from specified layers of protein language models
 4. **Correlation Analysis**: Measures what proportion of high-attention pairs correspond to structural contacts
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
@@ -64,7 +64,7 @@ To caclulate the proportion of high attention token pairs that correspond to con
 3) Report the proportion of high attention pairs that are also in contact
 
 
-## 💻 Usage
+## Usage
 
 ### Basic Usage
 
@@ -125,7 +125,7 @@ python gp.py \
     --save_dir results/dayhoff_170m
 ```
 
-## 📁 Output
+## Output
 
 ### Results File
 
@@ -148,7 +148,7 @@ Failed structures are logged to `failed_pdb_ids.log`:
 2DEF    Processing error: Invalid chain
 ```
 
-## 🎯 Supported Models
+## Supported Models
 
 The following Microsoft Dayhoff models are supported:
 
@@ -162,19 +162,8 @@ The following Microsoft Dayhoff models are supported:
 - `microsoft/Dayhoff-170m-UR90`
 - `microsoft/Dayhoff-170m-UR50`
 
-## 🔧 Technical Details
+## Technical Details
 
-### Architecture
-
-```
-Input: PDB IDs → Structure Download → Sequence & Contact Extraction
-                                              ↓
-                                    Attention Extraction (Batch)
-                                              ↓
-                                    Correlation Computation
-                                              ↓
-                                    Output: Proportion Matrix
-```
 
 ### Memory Optimization
 
