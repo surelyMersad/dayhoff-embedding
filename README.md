@@ -200,19 +200,6 @@ python gp.py --model_id microsoft/Dayhoff-170m-UR50
 - These structures are automatically skipped
 
 
-## 📄 License
-
-MIT License - see LICENSE file for details
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-
-## 📧 Contact
-
-For questions or issues, please open an issue on GitHub
-
 ## 🙏 Acknowledgments
 
 - Microsoft Research for the Dayhoff protein language models
