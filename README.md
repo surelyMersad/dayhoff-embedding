@@ -3,7 +3,7 @@
 analyzing how attention patterns in dayhoffs protein language models align with structural contacts in protein 3D structures.
 
 
-## 📊 Methodology
+## Methodology
 
 1. **Structure Processing**: Downloads PDB files and extracts Cα coordinates
 2. **Contact Map Generation**: Computes binary contact maps based on distance thresholds (default: 8Å)
