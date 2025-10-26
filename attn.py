@@ -1,6 +1,5 @@
 """
 Attention-Contact Correlation Analysis for Protein Structures
-GPU-optimized version with efficient tensor operations
 """
 import io
 import urllib
@@ -109,7 +108,7 @@ def get_contact_map(structure, chain_id: Optional[str] = None,
     # Contact = distance < threshold (exclude diagonal)
     cm = (dists < thresh) & (dists > 0.0)
     
-    return seq, cm  # Return GPU tensor
+    return seq, cm
 
 
 # ===================== ATTENTION PROCESSING =====================
@@ -131,15 +130,12 @@ def get_attn_data(sequence: str,
         attn: (L_layers, H, T, T) attention tensor on GPU
         keep_idx: Indices of non-special tokens
     """
-    # Tokenize
     batch = tokenizer(sequence, return_tensors="pt", add_special_tokens=True)
     batch = {k: v.to(DEVICE) for k, v in batch.items()}
     
-    # Get attention
     out = model(**batch, output_attentions=True, use_cache=False)
     atts = out.attentions
     
-    # Select layers
     if layer_indices is None:
         layer_indices = list(range(len(atts)))
     
@@ -151,7 +147,7 @@ def get_attn_data(sequence: str,
     else:
         keep_idx = list(range(input_ids.shape[0]))
     
-    # Process each layer - keep on GPU
+    # Process each layer
     processed = []
     for i in layer_indices:
         A = atts[i][0]  # (H, T, T)
@@ -261,7 +257,6 @@ def attn_corr(pdb_items: List[str],
     num_heads = model.config.num_attention_heads
     num_layers = len(layer_indices)
     
-    # Use GPU tensors for accumulation
     prop_sum = torch.zeros((num_heads, num_layers), dtype=torch.float32, device=DEVICE)
     counts = torch.zeros((num_heads, num_layers), dtype=torch.int32, device=DEVICE)
     
